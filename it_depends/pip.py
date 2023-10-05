@@ -112,24 +112,23 @@ class PipResolver(DependencyResolver):
         if version_str == "none":
             # this will happen if the dist is for a local wheel:
             return none_default
-        else:
-            try:
-                return Version.coerce(version_str)
-            except ValueError:
-                components = version_str.split(".")
-                if len(components) == 4:
-                    try:
-                        # assume the version component after the last period is the release
-                        return Version(
-                            major=int(components[0]),
-                            minor=int(components[1]),
-                            patch=int(components[2]),
-                            prerelease=components[3],
-                        )
-                    except ValueError:
-                        pass
-                # TODO: Figure out a better way to handle invalid version strings
-            return None
+        try:
+            return Version.coerce(version_str)
+        except ValueError:
+            components = version_str.split(".")
+            if len(components) == 4:
+                try:
+                    # assume the version component after the last period is the release
+                    return Version(
+                        major=int(components[0]),
+                        minor=int(components[1]),
+                        patch=int(components[2]),
+                        prerelease=components[3],
+                    )
+                except ValueError:
+                    pass
+            # TODO: Figure out a better way to handle invalid version strings
+        return None
 
     def resolve_dist(
         self,

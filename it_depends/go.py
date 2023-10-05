@@ -72,8 +72,7 @@ def git_commit(path: Optional[str] = None) -> Optional[str]:
 class GoVersion:
     def __init__(self, go_version_string: str):
         self.version_string: str = go_version_string.strip()
-        if self.version_string.startswith("="):
-            self.version_string = self.version_string[1:]
+        self.version_string = self.version_string.removeprefix("=")
         self.build: bool = False  # This is to appease semantic_version.base.SimpleSpec
 
     def __eq__(self, other):
@@ -109,10 +108,7 @@ class GoModule:
     @staticmethod
     def tag_to_git_hash(tag: str) -> str:
         segments = tag.split("-")
-        if len(segments) == 3:
-            return segments[-1]
-        else:
-            return tag
+        return segments[-1] if len(segments) == 3 else tag
 
     @staticmethod
     def parse_mod(mod_content: Union[str, bytes]) -> "GoModule":
@@ -122,23 +118,26 @@ class GoModule:
         dependencies = []
         name = None
         for line in mod_content.split("\n"):
-            if not in_require:
-                m = REQUIRE_MATCH.match(line)
-                if m:
-                    dependencies.append((m.group(1), m.group(2)))
-                else:
-                    if name is None:
-                        m = MODULE_MATCH.match(line)
-                        if m:
-                            name = m.group(1)
-                            continue
-                    in_require = bool(REQUIRE_BLOCK_MATCH.match(line))
-            elif line.strip() == ")":
+            if (
+                not in_require
+                and (m := REQUIRE_MATCH.match(line))
+                or in_require
+                and line.strip() != ")"
+                and (m := REQUIRE_LINE_MATCH.match(line))
+            ):
+                dependencies.append((m.group(1), m.group(2)))
+            elif not in_require and not (m := REQUIRE_MATCH.match(line)):
+                if name is None:
+                    if m := MODULE_MATCH.match(line):
+                        name = m.group(1)
+                        continue
+                in_require = bool(REQUIRE_BLOCK_MATCH.match(line))
+            elif (
+                not in_require
+                or line.strip() == ")"
+                or (m := REQUIRE_LINE_MATCH.match(line))
+            ):
                 in_require = False
-            else:
-                m = REQUIRE_LINE_MATCH.match(line)
-                if m:
-                    dependencies.append((m.group(1), m.group(2)))
         if name is None:
             raise ValueError("Missing `module` line in go mod specification")
         return GoModule(name, dependencies)
@@ -169,8 +168,7 @@ class GoModule:
         force_clone: bool = False,
     ):
         if check_for_github:
-            m = GITHUB_URL_MATCH.fullmatch(git_url)
-            if m:
+            if m := GITHUB_URL_MATCH.fullmatch(git_url):
                 return GoModule.from_github(m.group(2), m.group(3), tag)
         log.info(f"Attempting to clone {git_url}")
         with TemporaryDirectory() as tempdir:
@@ -393,10 +391,7 @@ class GoResolver(DependencyResolver):
         git_hash = git_commit(str(repo.path))
         timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
         version = f"v0.0.0-{timestamp}-"
-        if git_hash is None:
-            version = f"{version}????"
-        else:
-            version = f"{version}{git_hash}"
+        version = f"{version}????" if git_hash is None else f"{version}{git_hash}"
         return SourcePackage(
             name=module.name,
             version=GoVersion(version),  # type: ignore

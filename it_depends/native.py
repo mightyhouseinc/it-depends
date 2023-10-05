@@ -78,9 +78,8 @@ def get_dependencies(
         )
         stdout.close()
         with open(stdout.name, "r") as f:
-            for line in f.readlines():
-                m = STRACE_LIBRARY_REGEX.match(line)
-                if m:
+            for line in f:
+                if m := STRACE_LIBRARY_REGEX.match(line):
                     path = m.group(2)
                     if path not in ("/etc/ld.so.cache",) and path.startswith("/"):
                         yield Dependency(
@@ -131,12 +130,11 @@ def container_for(source: DependencyResolver) -> DockerContainer:
 
 def baseline_for(source: DependencyResolver) -> FrozenSet[Dependency]:
     with _CONTAINER_LOCK:
-        if source not in BASELINES_BY_SOURCE:
-            baseline = frozenset(get_baseline_dependencies(container_for(source)))
-            BASELINES_BY_SOURCE[source] = baseline
-            return baseline
-        else:
+        if source in BASELINES_BY_SOURCE:
             return BASELINES_BY_SOURCE[source]
+        baseline = frozenset(get_baseline_dependencies(container_for(source)))
+        BASELINES_BY_SOURCE[source] = baseline
+        return baseline
 
 
 def get_native_dependencies(package: Package, use_baseline: bool = False) -> Iterator[Dependency]:
@@ -144,10 +142,7 @@ def get_native_dependencies(package: Package, use_baseline: bool = False) -> Ite
     if not package.resolver.docker_setup():
         return
     container = container_for(package.resolver)
-    if use_baseline:
-        baseline = baseline_for(package.resolver)
-    else:
-        baseline = frozenset()
+    baseline = baseline_for(package.resolver) if use_baseline else frozenset()
     for dep in get_package_dependencies(container, package):
         if dep not in baseline:
             yield dep

@@ -91,8 +91,7 @@ class Dependency:
         try:
             source, tail = description.split(":", 1)
             package, *remainder = tail.split("@", 1)
-            version_string = "@".join(remainder)
-            if version_string:
+            if version_string := "@".join(remainder):
                 resolver = resolver_by_name(source)
                 version = resolver.parse_spec(version_string)
             else:
@@ -152,10 +151,7 @@ class Package:
         self.name: str = name
         self.version: Version = version
         self.dependencies: FrozenSet[Dependency] = frozenset(dependencies)
-        if isinstance(source, DependencyResolver):
-            self.source: str = source.name
-        else:
-            self.source = source
+        self.source = source.name if isinstance(source, DependencyResolver) else source
         self.vulnerabilities: FrozenSet[Vulnerability] = frozenset(vulnerabilities)
 
     @property
@@ -194,8 +190,7 @@ class Package:
         dependencies: Iterable[Dependency] = ()
         if "[" in version:
             version, tail = version.split("[")
-            tail = tail.strip(" ]")
-            if tail:
+            if tail := tail.strip(" ]"):
                 dependencies = map(Dependency.from_string, tail.split(","))
 
         return cls(
@@ -211,7 +206,7 @@ class Package:
             dependencies = "[" + ",".join(map(str, sorted(self.dependencies))) + "]"
         else:
             dependencies = ""
-        return f"{self.source}:{self.name}@{self.version}" + dependencies
+        return f"{self.source}:{self.name}@{self.version}{dependencies}"
 
     def to_dependency(self) -> Dependency:
         return Dependency(
@@ -221,7 +216,7 @@ class Package:
         )
 
     def to_obj(self):
-        ret = {
+        return {
             "source": self.source,
             "name": self.name,
             "version": str(self.version),
@@ -231,7 +226,6 @@ class Package:
             },
             "vulnerabilities": [vuln.to_obj() for vuln in self.vulnerabilities],
         }
-        return ret  # type: ignore
 
     def dumps(self) -> str:
         return json.dumps(self.to_obj())
@@ -398,11 +392,7 @@ class DependencyGraph(RootedDiGraph[Package, SourcePackage]):
     ) -> float:
         if not self._collapsed:
             return self.collapse_versions().distance_to(graph, normalize)
-        if not self.source_packages:
-            # use our roots instead:
-            compare_from: RootedDiGraph[Package, Package] = self.find_roots()
-        else:
-            compare_from = self  # type: ignore
+        compare_from = self.find_roots() if not self.source_packages else self
         if isinstance(graph, DependencyGraph):
             compare_to: RootedDiGraph[Package, Package] = graph.collapse_versions()  # type: ignore
         else:
@@ -450,10 +440,7 @@ class PackageCache(ABC):
 
     def __contains__(self, pkg: Package):
         """True if pkg exists in this in this collection of packages."""
-        for pkg_i in self:
-            if pkg_i == pkg:
-                return True
-        return False
+        return any(pkg_i == pkg for pkg_i in self)
 
     @abstractmethod
     def was_resolved(self, dependency: Dependency) -> bool:
@@ -629,10 +616,7 @@ class PackageCache(ABC):
 class InMemoryPackageCache(PackageCache):
     def __init__(self, _cache: Optional[Dict[str, Dict[str, Dict[Version, Package]]]] = None):
         super().__init__()
-        if _cache is None:
-            self._cache: Dict[str, Dict[str, Dict[Version, Package]]] = {}
-        else:
-            self._cache = _cache
+        self._cache = {} if _cache is None else _cache
         self._resolved: Dict[str, Set[Dependency]] = defaultdict(set)  # source:package -> dep
         self._updated: Dict[Package, Set[str]] = defaultdict(set)  # source:package -> dep
 
@@ -751,11 +735,11 @@ class DependencyResolver:
     description: str
     _instance = None
 
-    def __new__(class_, *args, **kwargs):
+    def __new__(cls, *args, **kwargs):
         """A singleton (Only one default instance exists)"""
-        if not isinstance(class_._instance, class_):
-            class_._instance = super().__new__(class_, *args, **kwargs)
-        return class_._instance
+        if not isinstance(cls._instance, cls):
+            cls._instance = super().__new__(cls, *args, **kwargs)
+        return cls._instance
 
     def __init_subclass__(cls, **kwargs):
         if not hasattr(cls, "name") or cls.name is None:
@@ -885,9 +869,9 @@ def resolve(
         cache = InMemoryPackageCache()  # Some resolvers may use it to save temporary results
 
     try:
-        with cache, tqdm(
-            desc=f"resolving {repo_or_spec!s}", leave=False, unit=" dependencies"
-        ) as t:
+        with (cache, tqdm(
+                    desc=f"resolving {repo_or_spec!s}", leave=False, unit=" dependencies"
+                ) as t):
             if isinstance(repo_or_spec, Dependency):
                 unresolved_dependencies: List[Tuple[Dependency, int]] = [(repo_or_spec, 0)]
                 unupdated_packages: List[Tuple[Package, int]] = []
@@ -910,7 +894,7 @@ def resolve(
                     raise ValueError(f"Can not resolve {repo_or_spec}")
             else:
                 raise ValueError(
-                    f"repo_or_spec must be either a Package, Dependency, or SourceRepository"
+                    "repo_or_spec must be either a Package, Dependency, or SourceRepository"
                 )
 
             t.total = len(unupdated_packages) + len(unresolved_dependencies)
@@ -1061,7 +1045,7 @@ def resolve(
                 while True:
                     sys.stderr.write("Would you like to output the partial results? [Yn] ")
                     choice = input().lower()
-                    if choice == "" or choice == "y":
+                    if choice in ["", "y"]:
                         return repo
                     elif choice == "n":
                         sys.exit(1)

@@ -39,10 +39,7 @@ def _discover_podman_socket():
         # Root: check for /run/podman/podman.sock and nothing else.
         sock_path = Path("/run/podman/podman.sock")
 
-    if not sock_path.is_socket():
-        return None
-
-    return f"unix://{sock_path}"
+    return None if not sock_path.is_socket() else f"unix://{sock_path}"
 
 
 class Dockerfile:
@@ -161,10 +158,7 @@ class DockerContainer:
         tag: Optional[str] = None,
     ):
         self.image_name: str = image_name
-        if tag is None:
-            self.tag: str = it_depends_version()
-        else:
-            self.tag = tag
+        self.tag = it_depends_version() if tag is None else tag
         self._client: Optional[docker.DockerClient] = None
         self.dockerfile: Optional[Dockerfile] = dockerfile
 
@@ -187,18 +181,17 @@ class DockerContainer:
         if rebuild:
             self.rebuild()
         elif check_existence and not self.exists():
-            if build_if_necessary:
-                if self.dockerfile is not None and self.dockerfile.exists():
-                    self.rebuild()
-                else:
-                    self.pull()
-                if not self.exists():
-                    raise ValueError(f"{self.name} does not exist!")
-            else:
+            if not build_if_necessary:
                 raise ValueError(
                     f"{self.name} does not exist! Re-run with `build_if_necessary=True` to automatically "
                     "build it."
                 )
+            if self.dockerfile is not None and self.dockerfile.exists():
+                self.rebuild()
+            else:
+                self.pull()
+            if not self.exists():
+                raise ValueError(f"{self.name} does not exist!")
         if cwd is None:
             cwd = str(Path.cwd())
 
@@ -259,10 +252,14 @@ class DockerContainer:
         return self._client
 
     def exists(self) -> Optional[Image]:
-        for image in self.client.images.list():
-            if self.name in image.tags:
-                return image
-        return None
+        return next(
+            (
+                image
+                for image in self.client.images.list()
+                if self.name in image.tags
+            ),
+            None,
+        )
 
     def pull(self, latest: bool = False) -> Image:
         # We could use the Python API to pull, like this:
@@ -307,12 +304,11 @@ class DockerContainer:
                     except json.decoder.JSONDecodeError:
                         continue
                     if "stream" in line:
-                        m = re.match(
+                        if m := re.match(
                             r"^Step\s+(\d+)(/(\d+))?\s+:\s+(.+)$",
                             line["stream"],
                             re.MULTILINE,
-                        )
-                        if m:
+                        ):
                             if m.group(3):
                                 # Docker told us the total number of steps!
                                 total_steps = int(m.group(3))

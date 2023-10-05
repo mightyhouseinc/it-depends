@@ -19,7 +19,7 @@ def container_type() -> str:
     if not CI_TEST_PATH.exists():
         raise ValueError(f"GitHub action file {CI_TEST_PATH!s} does not exist!")
     with open(CI_TEST_PATH, "r") as f:
-        for line in f.readlines():
+        for line in f:
             line = line.strip()
             if line.startswith("runs-on:"):
                 github_name = line[len("runs-on:"):].lstrip()

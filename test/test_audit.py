@@ -15,9 +15,12 @@ logger = logging.getLogger(__name__)
 
 def _rand_str(n):
     """Returns a random string of length n (upper, lower and digits)"""
-    return ''.join(random.choice(string.ascii_lowercase +
-                   string.ascii_uppercase + string.digits)
-                   for i in range(n))
+    return ''.join(
+        random.choice(
+            string.ascii_lowercase + string.ascii_uppercase + string.digits
+        )
+        for _ in range(n)
+    )
 
 
 def _version_str():
@@ -34,21 +37,26 @@ def _random_package():
 def _random_packages(num_packages):
     """Returns PackacgeCache populated with num_package random Packages"""
     packages = InMemoryPackageCache()
-    list(map(packages.add, [_random_package() for i in range(num_packages)]))
+    list(map(packages.add, [_random_package() for _ in range(num_packages)]))
     return packages
 
 
 def _random_vulnerability():
     """Create a random vulnerability"""
-    return Vulnerability(_rand_str(10),
-                         [_rand_str(3) for i in range(random.randint(0, 7)) if
-                          random.randint(0, 100) < 90],
-                         _rand_str(random.randint(0, 10)))
+    return Vulnerability(
+        _rand_str(10),
+        [
+            _rand_str(3)
+            for _ in range(random.randint(0, 7))
+            if random.randint(0, 100) < 90
+        ],
+        _rand_str(random.randint(0, 10)),
+    )
 
 
 def _random_vulnerabilities(max_count):
     """Return up to max_count vulnerabilities"""
-    return [_random_vulnerability() for x in range(random.randint(0, max_count))]
+    return [_random_vulnerability() for _ in range(random.randint(0, max_count))]
 
 
 class TestAudit(TestCase):
@@ -72,8 +80,8 @@ class TestAudit(TestCase):
         mock_post().json.return_value = {"vulns": [{"id": "123"}]}
         ret = audit.vulnerabilities(packages)
 
-        pkg = next(p for p in ret)
-        vuln = next(v for v in pkg.vulnerabilities)  # Assume one vulnerability
+        pkg = next(iter(ret))
+        vuln = next(iter(pkg.vulnerabilities))
         self.assertEqual(vuln.id, "123")
         self.assertEqual(len(vuln.aliases), 0)
         self.assertEqual(vuln.summary, "N/A")

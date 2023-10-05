@@ -58,8 +58,9 @@ class UbuntuResolver(DependencyResolver):
         packages: Dict[Tuple[str, Version], List[List[Dependency]]] = {}
         for line in contents.split("\n"):
             if line.startswith("Version: "):
-                matched = UbuntuResolver._ubuntu_version.match(line[len("Version: ") :])
-                if matched:
+                if matched := UbuntuResolver._ubuntu_version.match(
+                    line[len("Version: ") :]
+                ):
                     # FIXME: Ubuntu versions can include "~", which the semantic_version library does not like
                     #        So hack a fix by simply dropping everything after the tilde:
                     raw_version = matched.group("version").split("~", maxsplit=1)[0]
@@ -125,10 +126,10 @@ class UbuntuResolver(DependencyResolver):
         if dependency.package.startswith("/"):
             # this is a file path, likely produced from native.py
             try:
-                deps = []
-                for pkg_name in file_to_packages(dependency.package):
-                    deps.append(Dependency(package=pkg_name, source=UbuntuResolver.name))
-                if deps:
+                if deps := [
+                    Dependency(package=pkg_name, source=UbuntuResolver.name)
+                    for pkg_name in file_to_packages(dependency.package)
+                ]:
                     yield Package(
                         name=dependency.package,
                         source=dependency.source,

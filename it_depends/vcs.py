@@ -96,12 +96,7 @@ class Match:
         return s
 
 
-if sys.version_info >= (3, 9):
-    REGEXP_TYPE = Pattern[str]
-else:
-    REGEXP_TYPE = Pattern
-
-
+REGEXP_TYPE = Pattern[str] if sys.version_info >= (3, 9) else Pattern
 @dataclass
 class VCSPath:
     regexp: REGEXP_TYPE
@@ -170,10 +165,7 @@ class Repository:
 
 def vcs_by_cmd(cmd: str) -> Optional[VCS]:
     """vcsByCmd returns the version control system for the given command name (hg, git, svn, bzr)."""
-    for vcs in VCSes:
-        if cmd == vcs.cmd:
-            return vcs
-    return None
+    return next((vcs for vcs in VCSes if cmd == vcs.cmd), None)
 
 
 @dataclass
@@ -200,7 +192,7 @@ def parse_go_vcs(s: str) -> Optional[List[GoVCSRule]]:
     for item in s.split(","):
         item = item.strip()
         if not item:
-            raise GoVCSConfigError(f"Empty entry in GOVCS")
+            raise GoVCSConfigError("Empty entry in GOVCS")
         i = item.find(":")
         if i < 0:
             raise GoVCSConfigError(f"Malformed entry in GOVCS (missing colon): {item!r}")
@@ -217,7 +209,7 @@ def parse_go_vcs(s: str) -> Optional[List[GoVCSRule]]:
             )
         have[pattern] = item
         allowed = [a.strip() for a in vcs_list.split("|")]
-        if any(not a for a in allowed):
+        if not all(allowed):
             raise GoVCSConfigError(f"Empty VCS name in GOVCS: {item!r}")
         rules.append(GoVCSRule(pattern=pattern, allowed=allowed))
     return rules

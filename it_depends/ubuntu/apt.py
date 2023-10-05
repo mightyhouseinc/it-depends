@@ -65,7 +65,7 @@ def _file_to_package_contents(filename: str, arch: str = "amd64"):
             f"http://security.ubuntu.com/ubuntu/dists/focal-security/Contents-{arch}.gz",
             dbfile,
         )
-    if not dbfile in _loaded_dbs:
+    if dbfile not in _loaded_dbs:
         logger.info("Rebuilding contents db")
         with gzip.open(str(dbfile), "rt") as contents:
             for line in contents.readlines():
@@ -74,7 +74,7 @@ def _file_to_package_contents(filename: str, arch: str = "amd64"):
                 contents_db.setdefault(filename_i, []).extend(packages_i)
         _loaded_dbs.add(dbfile)
 
-    regex = re.compile("(.*/)+" + filename + "$")
+    regex = re.compile(f"(.*/)+{filename}$")
     matches = 0
     for (filename_i, packages_i) in contents_db.items():
         if regex.match(filename_i):
@@ -105,13 +105,11 @@ def file_to_packages(filename: str, arch: str = "amd64") -> List[str]:
 
 
 def file_to_package(filename: str, arch: str = "amd64") -> str:
-    packages = file_to_packages(filename, arch)
-    if packages:
-        _, result = min((len(pkg), pkg) for pkg in packages)
-        logger.info(f"Found {len(packages)} matching packages for {filename}. Choosing {result}")
-        return result
-    else:
+    if not (packages := file_to_packages(filename, arch)):
         raise ValueError(f"{filename} not found in apt-file")
+    _, result = min((len(pkg), pkg) for pkg in packages)
+    logger.info(f"Found {len(packages)} matching packages for {filename}. Choosing {result}")
+    return result
 
 
 def cached_file_to_package(
@@ -121,7 +119,7 @@ def cached_file_to_package(
     # dependencies. If a file pattern is already sastified by current files
     # use the package already included as a dependency
     if file_to_package_cache is not None:
-        regex = re.compile("(.*/)+" + pattern + "$")
+        regex = re.compile(f"(.*/)+{pattern}$")
         for package_i, filename_i in file_to_package_cache:
             if regex.match(filename_i):
                 return package_i

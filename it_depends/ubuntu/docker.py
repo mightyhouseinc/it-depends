@@ -33,15 +33,14 @@ def is_running_ubuntu(check_version: Optional[str] = None) -> bool:
     is_ubuntu = False
     version: Optional[str] = None
     with open(os_release_path, "r") as f:
-        for line in f.readlines():
+        for line in f:
             line = line.strip()
             is_ubuntu = is_ubuntu or bool(_UBUNTU_NAME_MATCH.match(line))
             if check_version is None:
                 if is_ubuntu:
                     return True
             elif version is None:
-                m = _VERSION_ID_MATCH.match(line)
-                if m:
+                if m := _VERSION_ID_MATCH.match(line):
                     version = m.group(1)
             else:
                 break

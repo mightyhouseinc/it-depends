@@ -87,7 +87,7 @@ class AutotoolsResolver(DependencyResolver):
         """
         if not version:
             version = "*"
-        module_file = re.escape(module_name + ".pc")
+        module_file = re.escape(f"{module_name}.pc")
         logger.info(f"PKG_CHECK_MODULES {module_file}, {version}")
         package_name = file_to_package(module_file, file_to_package_cache=file_to_package_cache)
         return Dependency(
@@ -104,9 +104,7 @@ class AutotoolsResolver(DependencyResolver):
         if "$" not in token:
             return token
         variable_list = re.findall(r"\$([a-zA-Z_0-9]+)|\${([_a-zA-Z0-9]+)}", token)
-        variables = set(
-            var for var in itertools.chain(*variable_list) if var
-        )  # remove dups and empty
+        variables = {var for var in itertools.chain(*variable_list) if var}
         for var in variables:
             logger.info(f"Trying to find bindings for {var} in configure")
 

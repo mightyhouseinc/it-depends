@@ -130,12 +130,11 @@ class CargoResolver(DependencyResolver):
         for package in get_dependencies(repo, check_for_cargo=False):
             if isinstance(package, SourcePackage):
                 result = package
-            else:
-                if cache is not None:
-                    cache.add(package)
-                    for dep in package.dependencies:
-                        if not cache.was_resolved(dep):
-                            cache.set_resolved(dep)
+            elif cache is not None:
+                cache.add(package)
+                for dep in package.dependencies:
+                    if not cache.was_resolved(dep):
+                        cache.set_resolved(dep)
         return result
 
     def resolve(self, dependency: Dependency) -> Iterator[Package]:
@@ -158,7 +157,7 @@ class CargoResolver(DependencyResolver):
         with cache:
             for semantic_version in map(str.strip, semantic_versions):
                 if semantic_version[0].isnumeric():
-                    semantic_version = "=" + semantic_version
+                    semantic_version = f"={semantic_version}"
                 pkgid = f'{pkgid.split("=")[0].strip()} = "{semantic_version}"'
 
                 logger.debug(f"Found {pkgid} for {dependency} in crates.io")

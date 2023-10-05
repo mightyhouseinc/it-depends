@@ -126,22 +126,19 @@ def graph_to_html(
             nodes[-1]["level"] = max(graph.shortest_path_from_root(package), 0)
         for pkg1, pkg2, *_ in graph.out_edges(package):  # type: ignore
             dep = graph.get_edge_data(pkg1, pkg2)["dependency"]
-            if collapse_versions:
-                # if we are collapsing versions, omit the version name
-                dep_name = f"{dep.source}:{dep.package}"
-            else:
-                dep_name = str(dep)
+            dep_name = f"{dep.source}:{dep.package}" if collapse_versions else str(dep)
             edges.append({"from": node_ids[pkg1], "to": node_ids[pkg2], "shape": "dot"})
             if dep_name != pkg2.full_name:
                 edges[-1]["label"] = dep_name
 
     if title is None:
-        source_packages = ", ".join(p.full_name for p in graph.source_packages)
-        if not source_packages:
-            title = "Dependency Graph"
-        else:
+        if source_packages := ", ".join(
+            p.full_name for p in graph.source_packages
+        ):
             title = f"Dependency Graph for {source_packages}"
 
+        else:
+            title = "Dependency Graph"
     return (
         TEMPLATE.replace("$NODES", repr(nodes))
         .replace("$EDGES", repr(edges))

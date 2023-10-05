@@ -282,10 +282,7 @@ class DBPackageCache(PackageCache):
         self._session = None
 
     def open(self):
-        if isinstance(self.db, str):
-            db = create_engine(self.db)
-        else:
-            db = self.db
+        db = create_engine(self.db) if isinstance(self.db, str) else self.db
         self._session = sessionmaker(bind=db)()
         Base.metadata.create_all(db)
 
@@ -350,10 +347,7 @@ class DBPackageCache(PackageCache):
     def _make_query(self, to_match: Union[str, Package], source: Optional[str] = None):
         if source is None and isinstance(to_match, Package):
             source = to_match.source
-        if source is not None:
-            filters: Tuple[Any, ...] = (DBPackage.source.like(source),)
-        else:
-            filters = ()
+        filters = (DBPackage.source.like(source), ) if source is not None else ()
         if isinstance(to_match, Package):
             return self.session.query(DBPackage).filter(
                 DBPackage.name.like(to_match.name),
@@ -369,10 +363,7 @@ class DBPackageCache(PackageCache):
                 if package.version in to_match.semantic_version:
                     yield package.to_package()
         else:
-            if isinstance(to_match, Package):
-                source: Optional[str] = to_match.source
-            else:
-                source = None
+            source = to_match.source if isinstance(to_match, Package) else None
             # we intentionally build a list before yielding so that we don't keep the session query lingering
             yield from [
                 package.to_package() for package in self._make_query(to_match, source=source).all()

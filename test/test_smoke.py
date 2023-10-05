@@ -81,13 +81,10 @@ class TestResolvers(TestCase):
             )
         ])
         for dep, num_attempts in to_test:
-            with self.subTest(msg=f"Testing the determinism of dep", dep=dep):
+            with self.subTest(msg="Testing the determinism of dep", dep=dep):
                 first_result: Set[Package] = set()
                 for i in range(num_attempts):
-                    if i < num_attempts // 2:
-                        attempt_cache: Optional[InMemoryPackageCache] = None
-                    else:
-                        attempt_cache = cache
+                    attempt_cache = None if i < num_attempts // 2 else cache
                     result = set(resolve(dep, cache=attempt_cache))
                     if i == 0:
                         first_result = result
@@ -115,7 +112,7 @@ class SmokeTest:
         self.commit: str = commit
 
         self.url: str = f"https://github.com/{user_name}/{repo_name}/archive/{commit}.zip"
-        self._snapshot_folder: Path = REPOS_FOLDER / (repo_name + "-" + commit)
+        self._snapshot_folder: Path = REPOS_FOLDER / f"{repo_name}-{commit}"
         self._snapshot_zip: Path = self._snapshot_folder.with_suffix(".zip")
 
         self.expected_json: Path = REPOS_FOLDER / f"{repo_name}.expected.json"

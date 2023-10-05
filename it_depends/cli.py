@@ -191,7 +191,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         db_path.unlink()
                         sys.stderr.write("Cache cleared.\n")
                         break
-                    elif choice == "n" or choice == "":
+                    elif choice in ["n", ""]:
                         break
             else:
                 db_path.unlink()

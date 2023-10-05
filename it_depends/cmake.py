@@ -145,9 +145,7 @@ class CMakeResolver(DependencyResolver):
             "ONLY_CMAKE_FIND_ROOT_PATH",
             "NO_CMAKE_FIND_ROOT_PATH",
         )
-        version = None
-        if len(args) > 0 and args[0] not in keywords:
-            version = args[0]
+        version = args[0] if args and args[0] not in keywords else None
         name = re.escape(package)
         try:
             name = rf"({name}\.pc|{name}Config\.cmake|{name}Config\.cmake|{name.lower()}\-config\.cmake)"
@@ -206,9 +204,7 @@ class CMakeResolver(DependencyResolver):
     def _get_names(self, args, keywords):
         """Get the sequence of argumens after NAMES and until any of the keywords"""
 
-        index = -1
-        if "NAMES" in args:
-            index = args.index("NAMES")
+        index = args.index("NAMES") if "NAMES" in args else -1
         names = []
         if index != -1:
             for name in args[index + 1 :]:
@@ -418,8 +414,6 @@ class CMakeResolver(DependencyResolver):
                     parsed = cmake_parsing.parse(line)
                 except Exception as e:
                     logger.debug(f"Parsing error: {e}")
-                    pass  # ignore parsing exceptions for now
-
                 for token in parsed:
                     try:
                         if isinstance(line, cmake_parsing.BlankLine):
@@ -505,13 +499,12 @@ class CMakeResolver(DependencyResolver):
         for name, version in deps:
             if name not in depsd or depsd[name] is None:
                 depsd[name] = version
-            else:
-                if version is not None and version != depsd[name]:
-                    # conflict
-                    logger.info(
-                        f"Found a conflict in versions for {name} ({version} vs. {depsd[name]}). Setting '*'"
-                    )
-                    depsd[name] = "*"
+            elif version is not None and version != depsd[name]:
+                # conflict
+                logger.info(
+                    f"Found a conflict in versions for {name} ({version} vs. {depsd[name]}). Setting '*'"
+                )
+                depsd[name] = "*"
 
         if package_version is None:
             package_version = "0.0.0"

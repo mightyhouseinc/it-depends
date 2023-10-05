@@ -49,19 +49,9 @@ class NPMResolver(DependencyResolver):
             raise ValueError(f"Expected a package.json file at {path!s}")
         with open(path, "r") as json_file:
             package = json.load(json_file)
-        if "name" in package:
-            name = package["name"]
-        else:
-            # use the parent directory name
-            name = path.parent.name
-        if "dependencies" in package:
-            dependencies: Dict[str, str] = package["dependencies"]
-        else:
-            dependencies = {}
-        if "version" in package:
-            version = package["version"]
-        else:
-            version = "0"
+        name = package["name"] if "name" in package else path.parent.name
+        dependencies = package["dependencies"] if "dependencies" in package else {}
+        version = package["version"] if "version" in package else "0"
         version = Version.coerce(version)
 
         return SourcePackage(
